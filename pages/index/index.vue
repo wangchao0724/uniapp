@@ -12,7 +12,7 @@
 			</template>
 		</uni-nav-bar>
 		<view class="page-content">
-			<view class="tabs-header" :style="{'--left': activeRect.left + 'px', '--width': activeRect.width + 'px'}">
+			<view class="tabs-header" :style="{'--current': current, '--total': tabs.length}">
 				<view
 					ref="tabRef"
 					class="tab-item"
@@ -84,10 +84,6 @@
 					}
 				],
 				current: 1,
-				activeRect: {
-					left: 0,
-					width: 0
-				},
 				triggered: false,
 				loadStatus: 'loading',
 				intersectionObserver: null,
@@ -137,12 +133,6 @@
 			current: {
 				handler() {
 					this.$nextTick(() => {
-						const currentTab = this.$refs.tabRef[this.current];
-						const rect = currentTab.$el.getBoundingClientRect()
-						this.activeRect = {
-							left: rect.left,
-							width: rect.width
-						};
 						this.rewardData = [];
 						this.page = 1;
 						this.getData();
@@ -151,7 +141,7 @@
 				immediate: true
 			}
 		},
-		mounted() {
+		onReady() {
 			this.intersectionObserver = new IntersectionObserver(([entrie]) => {
 				if (this.loadStatus === 'noMore') return;
 				if (entrie.isIntersecting) {
@@ -211,25 +201,30 @@
 			overflow: hidden;
 			display: flex;
 			flex-direction: column;
+			margin:  0 40rpx;
+			border-radius: 8rpx;
+			background-color: #fff;
 			
 			.tabs-header {
 				--ratio: 0.5;
+				--width: calc(100% / var(--total));
 				
 				display: flex;
 				align-items: center;
 				font-size: 24rpx;
 				position: relative;
-				padding-bottom: 20rpx;
+				padding: 20rpx 0;
 				
 				&::before {
 					content: '';
 					position: absolute;
-					left: calc(var(--left) + var(--width) * (1 - var(--ratio)) / 2);
+					left: calc(var(--current) * var(--width) + var(--width) / 2);
 					bottom: 0;
 					width: calc(var(--width) * var(--ratio));
 					height: 10rpx;
 					background-color: green;
 					border-radius: 10rpx;
+					transform: translateX(-50%);
 					transition: all 0.5s;
 				}
 				
@@ -248,12 +243,18 @@
 				.tab-item {
 					flex: 1;
 					text-align: center;
-					padding: 20rpx 10rpx;
+					height: 140rpx;
 					position: relative;
+					display: flex;
+					flex-direction: column;
+					justify-content: center;
 					
-					.tab-title,
+					.tab-title {
+						font-weight: bold;
+					}
+					
 					.tab-subtitle {
-						display: block;
+						font-size: 20rpx;
 					}
 					
 					&:not(:last-child)::after {
@@ -261,11 +262,11 @@
 						position: absolute;
 						right: 0;
 						top: 0;
-						width: 10rpx;
+						width: 1rpx;
 						height: 100%;
 						background-color: red;
-						border-radius: 10rpx;
-						transform: translateX(50%);
+						border-radius: 1rpx;
+						transform: translate(50%);
 					}
 					
 				}
