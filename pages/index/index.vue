@@ -1,46 +1,75 @@
 <template>
-	<page @clickRight="clickRight">
-		<template v-slot:title>
-			<image src="/static/icon/icon_Assets_Details.png" class="title-icon"></image>
-			<text class="title-text">Assets Details</text>
-		</template>
-		<tabs :list="list" :current="current" @change="tabChange">
-			<template v-slot:limit>
-				<view class="empty">
-					<image src="/static/icon/img_no data.png" class="empty-img"></image>
-					<text class="empty-text">No Data</text>
-				</view>
+	<view class="page-wrapper">
+		<uni-nav-bar class="page-header" left-icon="left" backgroundColor="transparent" fixed :border="false"
+			@clickLeft="clickLeft" @clickRight="clickRight">
+			<view class="title">
+				<image src="/static/icon/icon_Assets_Details.png" class="title-icon"></image>
+				<text class="title-text">Assets Details</text>
+			</view>
+
+			<template v-slot:right>
+				<image src="/static/icon/icon_Tutorial.png" class="right"></image>
 			</template>
-			<template v-slot:rewards>
-				<view class="list">
-					<view 
-						class="list-item"
-						v-for="item in rewardData"
-					>
-						<view class="list-item--row">
-							<view class="list-item--row-left">
-								<text class="list-item--row-left--title">{{item.msg}}</text>
-								<text class="list-item--row-left--time">{{item.ctime}}</text>
-							</view>
-							<view class="list-item--row-right">
-								<text :style="{color: item.amount >= 0 ? 'green' : 'red'}">{{item.amount > 0 ? '+' : ''}}{{item.amount}} Rs</text>
-							</view>
-						</view>
+		</uni-nav-bar>
+		<view class="page-content">
+			<view class="tabs-header" :style="{'--left': activeRect.left + 'px', '--width': activeRect.width + 'px'}">
+				<view
+					ref="tabRef"
+					class="tab-item"
+					v-for="(item, index) in tabs"
+					:key="item.name"
+					@click="current = index"
+				>
+					<text class="tab-title">{{item.title}}</text>
+					<text class="tab-subtitle">{{item.subTitle}}</text>
+				</view>
+			</view>
+			<scroll-view 
+				class="tabs-content" 
+				scroll-y 
+				scroll-with-animation 
+				refresher-enabled
+				refresher-background="#efefef"
+				:refresher-triggered="triggered"
+				@refresherrefresh="refresherrefresh"
+			>
+				<view 
+					class="list"
+					v-for="(row, i) in rewardData"
+					:key="i"
+				>
+					<view class="list-left">
+						<text>{{row.msg}}</text>
+						<text class="list-left--time">{{row.ctime}}</text>
+					</view>
+					<view class="list-right">
+						<text :style="{color: row.amount >= 0 ? 'green' : 'red'}">
+							{{row.amount > 0 ? '+' : ''}}{{row.amount}} Rs
+						</text>
 					</view>
 				</view>
-			</template>
-			<template v-slot:conversion>
-				<view>conversion</view>
-			</template>
-		</tabs>
-	</page>
+				<uni-load-more ref="loadMoreRef" :status="loadStatus"></uni-load-more>
+
+			</scroll-view>
+		</view>
+	</view>
 </template>
 
 <script>
+	// 生成随机日期的函数
+	function getRandomDate() {
+	  const year = Math.floor(Math.random() * (2025 - 1970) + 1970); // 1970 到 2024 年之间的随机年份
+	  const month = Math.floor(Math.random() * 12) + 1; // 1 到 12 之间的随机月份
+	  const daysInMonth = new Date(year, month, 0).getDate(); // 获取指定年份和月份的天数
+	  const day = Math.floor(Math.random() * daysInMonth) + 1; // 1 到该月份天数之间的随机日期
+	
+	  return `${year}.${month}.${day}`;
+	}
+	
 	export default {
 		data() {
 			return {
-				list: [{
+				tabs: [{
 						title: 'Withdraw Limit\nRecord',
 						name: 'limit'
 					},
@@ -55,44 +84,86 @@
 					}
 				],
 				current: 1,
-				rewardData: [
-					{
-						amount: 50,
-						ctime: '2024.5.2',
-						event_id: '1',
-						msg: 'Registration bonus'
-					},
-					{
-						amount: 10,
-						ctime: '2024.5.2',
-						event_id: '2',
-						msg: 'Novice Task finished'
-					},
-					{
-						amount: -60,
-						ctime: '2024.5.2',
-						event_id: '3',
-						msg: 'Convert into withdrawable amount'
-					},
-					{
-						amount: 10,
-						ctime: '2024.5.1',
-						event_id: '4',
-						msg: 'Invitee recharge rabate'
-					},
-				]
+				activeRect: {
+					left: 0,
+					width: 0
+				},
+				triggered: false,
+				loadStatus: 'loading',
+				intersectionObserver: null,
+				page: 1,
+				size: 10,
+				rewardData: []
 			}
 		},
 		methods: {
-			clickRight() {
-				console.log('右侧点击');
+			clickLeft() {
+				uni.navigateBack()
 			},
-			tabChange(tab, index) {
-				this.current = index
+			clickRight() {
+				console.log('点击标题右侧');
+			},
+			async getData() {
+				return new Promise((resolve) => {
+					this.loadStatus = 'loading';
+					// 使用示例
+					setTimeout(() => {
+						const arr = [];
+						for(let i = 0; i < this.page * this.size; i++) {
+							arr.push({
+								amount: Math.floor(Math.random() * 201 - 100),
+								ctime: getRandomDate(),
+								event_id: i,
+								msg: 'test' + i
+							})
+						}
+						this.rewardData = arr;
+						if (this.page * this.size >= 30) {
+							this.loadStatus = 'noMore'
+						}
+						resolve()
+					}, 2000)
+				})
+			},
+			refresherrefresh() {
+				this.triggered = true;
+				this.page = 1;
+				this.getData().finally(() => {
+					this.triggered = false;
+				});
+			}
+		},
+		watch: {
+			current: {
+				handler() {
+					this.$nextTick(() => {
+						const currentTab = this.$refs.tabRef[this.current];
+						const rect = currentTab.$el.getBoundingClientRect()
+						this.activeRect = {
+							left: rect.left,
+							width: rect.width
+						};
+						this.rewardData = [];
+						this.page = 1;
+						this.getData();
+					})
+				},
+				immediate: true
 			}
 		},
 		mounted() {
-
+			this.intersectionObserver = new IntersectionObserver(([entrie]) => {
+				if (this.loadStatus === 'noMore') return;
+				if (entrie.isIntersecting) {
+					this.page++;
+					this.getData();
+				}
+			});
+			this.intersectionObserver.observe(this.$refs.loadMoreRef.$el);
+		},
+		onUnload() {
+			this.intersectionObserver.disconnect();
+			this.intersectionObserver = null;
 		}
 	}
 </script>
@@ -106,68 +177,123 @@
 	.page-wrapper {
 		width: 100%;
 		height: 100%;
+		display: flex;
+		flex-direction: column;
 
-		.title-icon {
-			width: 36rpx;
-			height: 36rpx;
-		}
+		.page-header {
 
-		.title-text {
-			margin-left: 16rpx;
-			font-weight: bold;
+			.title {
+				flex: 1;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+
+				&-icon {
+					width: 36rpx;
+					height: 36rpx;
+				}
+
+				&-text {
+					margin-left: 16rpx;
+					font-weight: bold;
+				}
+			}
+
+			.right {
+				width: 36rpx;
+				height: 36rpx;
+			}
+
 		}
 		
-		.empty {
-			padding: 100rpx 0;
+		.page-content {
+			flex: 1;
+			overflow: hidden;
 			display: flex;
 			flex-direction: column;
-			align-items: center;
-				
-			&-img {
-				width: 140rpx;
-				height: 160rpx;
-			}
 			
-			&-text {
-				color: #ccc;
-				margin-top: 20rpx;
-			}
-		}
-		
-		.list {
-			padding: 20rpx;
-			&-item {
-				&--title {
-					display: block;
-					font-weight: bold;
-					margin: 30rpx 0 20rpx;
+			.tabs-header {
+				--ratio: 0.5;
+				
+				display: flex;
+				align-items: center;
+				font-size: 24rpx;
+				position: relative;
+				padding-bottom: 20rpx;
+				
+				&::before {
+					content: '';
+					position: absolute;
+					left: calc(var(--left) + var(--width) * (1 - var(--ratio)) / 2);
+					bottom: 0;
+					width: calc(var(--width) * var(--ratio));
+					height: 10rpx;
+					background-color: green;
+					border-radius: 10rpx;
+					transition: all 0.5s;
 				}
 				
-				&--row {
+				&::after {
+					content: '';
+					position: absolute;
+					left: 0;
+					bottom: 0;
+					width: 100%;
+					height: 10rpx;
+					background-color: red;
+					border-radius: 10rpx;
+					transform: translateY(100%);
+				}
+				
+				.tab-item {
+					flex: 1;
+					text-align: center;
+					padding: 20rpx 10rpx;
+					position: relative;
+					
+					.tab-title,
+					.tab-subtitle {
+						display: block;
+					}
+					
+					&:not(:last-child)::after {
+						content: '';
+						position: absolute;
+						right: 0;
+						top: 0;
+						width: 10rpx;
+						height: 100%;
+						background-color: red;
+						border-radius: 10rpx;
+						transform: translateX(50%);
+					}
+					
+				}
+				
+			}
+			
+			.tabs-content {
+				flex: 1;
+				overflow: hidden;
+				padding: 20rpx;
+				box-sizing: border-box;
+				
+				
+				.list {
 					display: flex;
 					align-items: center;
 					justify-content: space-between;
-					border-bottom: 1rpx solid #f7f7f7;
-					padding: 20rpx 0;
-					font-size: 28rpx;
+					border-bottom: 1rpx solid #ccc;
+					padding: 20rpx;
 					
 					&-left {
 						display: flex;
 						flex-direction: column;
 						
-						&--title {
-							
-						}
-						
 						&--time {
 							font-size: 24rpx;
-							color: #ccc;
-							word-spacing: 0rpx;
+							color: #bbb;
 						}
-					}
-					
-					&-right {
-						font-weight: bold;
 					}
 				}
 			}

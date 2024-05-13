@@ -7,8 +7,7 @@
 			"navigationStyle": "custom",
 			"disableScroll": true,
 			"disableSwipeBack": false,
-			"transparentTitle": "none",
-			"maxWidth": 375
+			"transparentTitle": "none"
 		}
 	}],
 	"globalStyle": {
